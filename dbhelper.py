@@ -1,19 +1,29 @@
 import streamlit as st
 from sqlalchemy import create_engine
 import pandas as pd
+import pymysql
 
 
 class DB:
     # connect to database
     def __init__(self):
-        self.user = st.secrets.db_credentials.user
-        self.password = st.secrets.db_credentials.password
+        ENDPOINT = st.secrets.host
+        PORT = st.secrets.port
+        USER = st.secrets.user
+        PASSWORD = st.secrets.password
+        DBNAME = st.secrets.DBname
 
         try:
-            self.con = create_engine(f'mysql+pymysql://{self.user}:{self.password}@127.0.0.1/psl')
-            print('established connection')
+            self.con = pymysql.connect(
+                                        host=ENDPOINT,
+                                        user=USER,
+                                        password=PASSWORD,
+                                        port=PORT,
+                                        database=DBNAME
+            )
         except:
             print('connection error')
+            self.con = None
 
     def run_query(self, query):
         return pd.read_sql_query(query, self.con)
@@ -25,20 +35,32 @@ class DB:
         data = ['All Season'] + sorted([season[0] for season in seasons.values])
         return data
 
-    def player_season(self, name):
+    def batters_season(self, name):
         # Fetch unique seasons from the database
         seasons = self.run_query('SELECT DISTINCT season FROM batting_data where batsman = "{}"'.format(name))
         # Create a list with 'All Season' as the first entry, followed by the seasons
         data = ['All Season'] + sorted([season[0] for season in seasons.values])
         return data
 
-    def fetch_names(self):
+    def bowlers_season(self, name):
+        # Fetch unique seasons from the database
+        seasons = self.run_query('SELECT DISTINCT season FROM bowling_data where bowler = "{}"'.format(name))
+        # Create a list with 'All Season' as the first entry, followed by the seasons
+        data = ['All Season'] + sorted([season[0] for season in seasons.values])
+        return data
+
+    def fetch_batters_names(self):
         # Fetch batsman names from the database
         player = self.run_query('SELECT DISTINCT batsman FROM batting_data')
         data = ['choose a player'] + [player[0] for player in player.values]
         return data
+    def fetch_bowlers_names(self):
+        # Fetch batsman names from the database
+        player = self.run_query('SELECT Distinct bowler FROM bowling_data order by bowler')
+        data = ['choose a player'] + [player[0] for player in player.values]
+        return data
 
-    def fetch_players_record(self, season):
+    def batters_df(self, season):
         if season == 'All Season':
             table = self.run_query("""
                         select batsman 'Batsman',
@@ -70,7 +92,7 @@ class DB:
                         """.format(season))
             return table
 
-    def fetch_individual_overall(self, season, name):
+    def batter_metrics(self, season, name):
 
         if season == 'All Season':
             data = self.run_query("""
@@ -123,32 +145,40 @@ class DB:
         """.format(name))
         return data
 
-    def fetch_dismissal_detail(self, name):
-        data = self.run_query("""
-            select batsman, dismissed_by as 'Bowlers', count(*) as 'no of Wicket'
-            from batting_data
-            where dismissed_by not in ('run out', 'not out') and batsman = 'Babar Azam'
-            group by batsman, dismissed_by
-            order by count(*) desc limit 5
-        """)
-        return data
+    def fetch_player_team(self, season, name, player):
 
-    def fetch_player_team(self, season, name):
 
-        if season == 'All Season':
-            data = self.run_query("""
-                            SELECT batsman, season, team_name
-                            FROM batting_data
-                            WHERE batsman = '{}'
-                            GROUP BY batsman, season, team_name
-            """.format(name))
+        if player == 'batter':
+            if season == 'All Season':
+                data = self.run_query("""
+                                SELECT batsman, season, team_name
+                                FROM batting_data
+                                WHERE batsman = '{}'
+                                GROUP BY batsman, season, team_name
+                """.format(name))
+            else:
+                data = self.run_query("""
+                                SELECT batsman, season, team_name
+                                FROM batting_data
+                                WHERE batsman = '{}' and season = {}
+                                GROUP BY batsman, season, team_name
+                            """.format(name, season))
         else:
-            data = self.run_query("""
-                            SELECT batsman, season, team_name
-                            FROM batting_data
-                            WHERE batsman = '{}' and season = {}
-                            GROUP BY batsman, season, team_name
-                        """.format(name, season))
+            if season == 'All Season':
+                data = self.run_query("""
+                                SELECT bowler, season, team_name
+                                FROM bowling_data
+                                WHERE bowler = '{}'
+                                GROUP BY bowler, season, team_name
+                """.format(name))
+            else:
+                data = self.run_query("""
+                                SELECT bowler, season, team_name
+                                FROM bowling_data
+                                WHERE bowler = '{}' and season = {}
+                                GROUP BY bowler, season, team_name
+                            """.format(name, season))
+
 
         # Create and sort the DataFrame
         df = pd.DataFrame(data).sort_values(by="season").reset_index(drop=True)
@@ -195,10 +225,10 @@ class DB:
         # Create the result DataFrame
         result_df = pd.DataFrame(result)
 
-        # Display the result DataFrame
+        # return the result DataFrame
         return result_df
 
-    def fetch_individual_record(self, name):
+    def individual_batter_record(self, name):
         data = self.run_query("""
             select season as 'Season', team_name 'Team Name',
                         count(*) 'Matches Played',
@@ -273,3 +303,165 @@ class DB:
                                     order by wickets desc
                         """.format(name,season))
             return data
+
+    def bowling_stats(self, season):
+
+        if season == 'All Season':
+            data = self.run_query("""
+                    SELECT 
+                        bowler AS 'Bowler',
+                        -- Total Match
+                        COUNT(*) as 'Matches Played',
+                        -- Total Balls
+                        SUM(total_balls) 'Total Balls',
+                        -- Total wickets taken by the bowler
+                        SUM(wickets_taken) AS 'Total Wickets',
+                        -- Bowling Average: Runs conceded per wicket taken
+                        ROUND(SUM(runs_conceded) / SUM(wickets_taken), 2) AS 'Bowling Average',
+                        -- Economy Rate: Runs conceded per over bowled
+                        ROUND(SUM(runs_conceded) / SUM(overs), 2) AS 'Economy Rate',
+                        -- Bowling Strike Rate: Balls bowled per wicket taken
+                        ROUND(SUM(total_balls) / SUM(wickets_taken)) AS 'Strike Rate',
+                        -- Dot Ball Percentage: Percentage of dot balls bowled
+                        ROUND((SUM(dot_balls) / SUM(total_balls)) * 100, 2) AS 'Dot Ball Percent',
+                        -- Boundary Percentage: Percentage of balls that resulted in boundaries
+                        ROUND(((SUM(fours_conceded) + SUM(sixes_conceded)) / SUM(total_balls)) * 100, 2) AS 'Boundary Ball Percent',
+                        100 - ((ROUND((SUM(dot_balls) / SUM(total_balls)) * 100, 2)) + 
+                        (ROUND(((SUM(fours_conceded) + SUM(sixes_conceded)) / SUM(total_balls)) * 100, 2))) AS 'Non-Boundary Ball Percent',
+                        -- Total runs conceded by the bowler
+                        SUM(runs_conceded) AS 'Total Runs Conceded',
+                        -- Total maiden overs bowled
+                        SUM(maidens) AS 'Total Maidens',
+                        -- Total extras conceded (wides + no balls)
+                        SUM(wide_balls) + SUM(no_balls) AS 'Total Extras Conceded',
+                        count(case when wickets_taken = 4 then 1 end) '4W',
+                        count(case when wickets_taken >= 5 then 1 end) '5W'
+                    FROM 
+                        bowling_data
+                    GROUP BY 
+                        bowler
+                    ORDER BY 
+                        SUM(wickets_taken) DESC;
+            """)
+            return data
+        else:
+            data = self.run_query("""
+                    SELECT 
+                        bowler AS 'Bowler',
+                        -- Total Match
+                        COUNT(*) as 'Matches Played',
+                        -- Total Balls
+                        SUM(total_balls) 'Total Balls',
+                        -- Total wickets taken by the bowler
+                        SUM(wickets_taken) AS 'Total Wickets',
+                        -- Bowling Average: Runs conceded per wicket taken
+                        ROUND(SUM(runs_conceded) / SUM(wickets_taken), 2) AS 'Bowling Average',
+                        -- Economy Rate: Runs conceded per over bowled
+                        ROUND(SUM(runs_conceded) / SUM(overs), 2) AS 'Economy Rate',
+                        -- Bowling Strike Rate: Balls bowled per wicket taken
+                        ROUND(SUM(total_balls) / SUM(wickets_taken)) AS 'Strike Rate',
+                        -- Dot Ball Percentage: Percentage of dot balls bowled
+                        ROUND((SUM(dot_balls) / SUM(total_balls)) * 100, 2) AS 'Dot Ball Percent',
+                        -- Total maiden overs bowled
+                        SUM(maidens) AS 'Total Maidens',
+                        -- Boundary Percentage: Percentage of balls that resulted in boundaries
+                        ROUND(((SUM(fours_conceded) + SUM(sixes_conceded)) / SUM(total_balls)) * 100, 2) AS 'Boundary Ball Percent',
+                        100 - ((ROUND((SUM(dot_balls) / SUM(total_balls)) * 100, 2)) + 
+                        (ROUND(((SUM(fours_conceded) + SUM(sixes_conceded)) / SUM(total_balls)) * 100, 2))) AS 'Non-Boundary Ball Percent',
+                        -- Total runs conceded by the bowler
+                        SUM(runs_conceded) AS 'Total Runs Conceded',
+                        -- Total extras conceded (wides + no balls)
+                        SUM(wide_balls) + SUM(no_balls) AS 'Total Extras Conceded',
+                        count(case when wickets_taken = 4 then 1 end) '4W',
+                        count(case when wickets_taken >= 5 then 1 end) '5W'
+                    FROM 
+                        bowling_data
+                    WHERE season = {}
+                    GROUP BY 
+                        bowler
+                    ORDER BY 
+                        SUM(wickets_taken) DESC;               
+                """.format(season))
+            return data
+    def best_bowling_inning(self, season, name):
+        if season == 'All Season':
+            data = self.run_query(f"""
+            WITH bbi AS (
+                    SELECT 
+                        bowler, 
+                        wickets_taken, 
+                        runs_conceded,
+                        ROW_NUMBER() OVER (PARTITION BY bowler ORDER BY wickets_taken DESC, runs_conceded ASC) AS rk
+                    FROM bowling_data
+                    where bowler = '{name}'
+                    )
+                    SELECT bowler, wickets_taken, runs_conceded
+                    FROM bbi
+                    WHERE rk = 1;
+            
+            """)
+            return data
+
+        else:
+            data = self.run_query(f"""
+                        WITH bbi AS (
+                                SELECT 
+                                    bowler, 
+                                    wickets_taken, 
+                                    runs_conceded,
+                                    ROW_NUMBER() OVER (PARTITION BY bowler ORDER BY wickets_taken DESC, runs_conceded ASC) AS rk
+                                FROM bowling_data
+                                WHERE bowler = '{name}' and season = {season}
+                                )
+                                SELECT bowler, wickets_taken, runs_conceded
+                                FROM bbi
+                                WHERE rk = 1;
+
+                        """)
+            return data
+    def bowler_records_trend(self,name,season):
+
+        if season == 'All Season':
+            data = self.run_query("""
+                    select bowler, season,
+                    sum(wickets_taken) as wickets,
+                    ROUND(SUM(runs_conceded) / SUM(overs), 2) AS 'Economy Rate'
+                    from bowling_data
+                    where bowler = '{}'
+                    group by bowler, season;
+            """.format(name))
+            return data
+        else:
+            data = self.run_query("""
+                                select bowler, season,
+                                sum(wickets_taken) as wickets,
+                                ROUND(SUM(runs_conceded) / SUM(overs), 2) AS 'Economy Rate'
+                                from bowling_data
+                                where bowler = '{}' and season = {}
+                                group by bowler, season;
+                        """.format(name,season))
+            return data
+
+
+    def bowler_avg_sr(self,season,name):
+        if season == 'All Season':
+            data = self.run_query("""
+                    select bowler,opponent_name,
+                        ROUND(SUM(runs_conceded) / SUM(wickets_taken), 2) AS 'Bowling Average',
+                        ROUND(SUM(total_balls) / SUM(wickets_taken), 2) AS 'Strike Rate'
+                        from bowling_data
+                        where bowler = '{}'
+                        group by bowler,opponent_name
+            """.format(name))
+            return data
+        else:
+            data = self.run_query("""
+                                select bowler,opponent_name,
+                                    ROUND(SUM(runs_conceded) / SUM(wickets_taken), 2) AS 'Bowling Average',
+                                    ROUND(SUM(total_balls) / SUM(wickets_taken), 2) AS 'Strike Rate'
+                                    from bowling_data
+                                    where bowler = '{}' and season = {}
+                                    group by bowler,opponent_name
+                        """.format(name, season))
+            return data
+
