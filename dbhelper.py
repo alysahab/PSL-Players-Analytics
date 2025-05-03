@@ -1,6 +1,6 @@
 import streamlit as st
-from sqlalchemy import create_engine
 import pandas as pd
+import mysql.connector
 import pymysql
 
 
@@ -21,8 +21,8 @@ class DB:
                                         port=PORT,
                                         database=DBNAME
             )
-        except:
-            print('connection error')
+        except Exception as e:
+            print(f'connection error --> {e}')
             self.con = None
 
     def run_query(self, query):
@@ -31,6 +31,7 @@ class DB:
     def fetch_season(self):
         # Fetch unique seasons from the database
         seasons = self.run_query('SELECT DISTINCT season FROM batting_data')
+
         # Create a list with 'All Season' as the first entry, followed by the seasons
         data = ['All Season'] + sorted([season[0] for season in seasons.values])
         return data
@@ -133,14 +134,14 @@ class DB:
     def fetch_player_overview(self, name):
         data = self.run_query("""
             select bat.batsman 'Player',
-            info.position 'Playing role',
+            info.playing_role 'Playing role',
             info.batting_style 'Batting style',
             case when info.bowling_style is not null then bowling_style else 'nill' end as 'Bowling style'
             from batting_data bat
-            join players_info info
+            join players_metadata info
             on bat.batsman = info.names
             where bat.batsman = '{}'
-            group by bat.batsman,info.position, info.batting_style, 
+            group by bat.batsman,info.playing_role, info.batting_style, 
             case when info.bowling_style is not null then bowling_style else 'nill' end; 
         """.format(name))
         return data
