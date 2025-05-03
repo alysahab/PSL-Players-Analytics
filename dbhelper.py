@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from sqlalchemy import create_engine
 import mysql.connector
 import pymysql
 
@@ -7,23 +8,17 @@ import pymysql
 class DB:
     # connect to database
     def __init__(self):
-        ENDPOINT = st.secrets.host
+        HOST = st.secrets.host
         PORT = st.secrets.port
         USER = st.secrets.user
         PASSWORD = st.secrets.password
         DBNAME = st.secrets.DBname
 
         try:
-            self.con = pymysql.connect(
-                                        host=ENDPOINT,
-                                        user=USER,
-                                        password=PASSWORD,
-                                        port=PORT,
-                                        database=DBNAME
-            )
+            self.con = create_engine(f'mysql+pymysql://{USER}:{PASSWORD}@{HOST}/{DBNAME}')
         except Exception as e:
             print(f'connection error --> {e}')
-            self.con = None
+            self.engine = None
 
     def run_query(self, query):
         return pd.read_sql_query(query, self.con)
