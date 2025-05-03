@@ -88,7 +88,7 @@ elif main_menu == 'Bowling Performance':
         st.sidebar.subheader("Filters")
         season = st.sidebar.selectbox("Select Season", data)
 
-        top_playersz = st.sidebar.radio("Metric", ["Top Wickets", "Best Average Bowling", "Best Economy Rate",
+        top_players = st.sidebar.radio("Metric", ["Top Wickets", "Best Average Bowling", "Best Economy Rate",
                                                   "Best Strike Rate (Bowling)"])
 
         # Fetch players' record
