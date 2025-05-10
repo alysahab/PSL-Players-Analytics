@@ -1,98 +1,57 @@
-# PSL-Players_stats
+# PSL Cricket Analytics Dashboard
 
-A comprehensive data analysis project focused on extracting, cleaning, and analyzing player statistics from the Pakistan Super League (PSL). This project gathers detailed insights about each player, including their batting, bowling, and personal information, providing a holistic view of player performance.
-
-## 📊 Project Overview
-
-The **PSL-Players_stats** project involves the complete data pipeline—from data extraction to cleaning—ensuring accurate and insightful information about PSL players. The primary aim is to provide a clean dataset that can be used for further analysis and visualization.
-
-### Key Objectives:
-
-- **Data Collection and Cleaning** ([Repo](https://github.com/alysahab/Web-Scraping-PSL-Data))
-  - Extract data from PSL player pages (batting, bowling, and personal details).
-  - Clean and organize the raw data into structured datasets.
-- **Visualization**
-  - Provide insights into individual player performances and overall trends.
-
-## 🛠️ Project Structure
-
-```
-PSL-Players_stats/
-├── Extraction Notebooks/
-│    ├── Batters and Bowlers Data Extraction.ipynb
-│    └── Players Data Extraction.ipynb
-├── Cleaning Notebooks/
-│    ├── Batting Data Cleaning.ipynb
-│    ├── Bowling Data Cleaning.ipynb
-│    ├── Players Data Cleaning.ipynb
-│    ├── PSL Title Winners.ipynb
-├── Visualization streamlit/
-│    ├── app.py
-│    ├── visual.py
-│    ├── dbhelper.py
-└── README.md                 # Project documentation
-```
-
-## 📋 Process Breakdown
-
-1. **Data Extraction**
-   - Used **Selenium** with **Threading** to scrape batting, bowling, and players' HTML content.
-   - Used **BeautifulSoup** to extract data from HTML content.
-
-2. **Data Cleaning**
-   - Used **Pandas** for removing inconsistencies, handling missing values and invalid entries, and standardizing data.
-   - Separate notebooks for cleaning batting, bowling, and player details.
-
-3. **Database Integration**
-   - Data is stored in an **AWS MySQL** database.
-   - Data is fetched using MySQL commands in the dbhelper module.
-
-4. **Insights Generation**
-   - **Plotly** is used to provide comprehensive insights on each player's performance through interactive visuals in **Streamlit**.
-   - Key metrics include:
-     - **Batting**: Average, strike rate, total runs, centuries.
-     - **Bowling**: Economy rate, wickets, bowling average.
-     - **General**: Player playing role and team history.
-
-5. **Deployed in Streamlit**
-   - Deployed the [Dashboard](https://psl-players-stats.streamlit.app/) on **Streamlit**.
-
-## 📊 Player Insights
-
-The project offers detailed insights on PSL players, including:
-
-- **Batting Performance**: Run analysis, strike rates, batting average, etc.
-- **Bowling Performance**: Wickets, economy rates, and best figures, etc.
-- **Player Profiles**: Teams played for, playing role, and overall career trajectory.
-- **Historical Trends**: player contributions over seasons.
-
-## 🚀 How to Run the Project
-
-1. **Clone the repository:**
-
-   ```bash
-   git clone https://github.com/yourusername/PSL-Players_stats.git
-   cd PSL-Players_stats
-   ```
-   
-2. **Ensure MySQL Database Setup:**
-   - Import the cleaned [dataset](https://www.kaggle.com/datasets/alysahab/complete-psl-data-2016-2024) (batting_data, bowling_data and players_info) into your **MySQL** database (local machine or **AWS**).
-   - Update the database connection details in the dbhelper module before running app.py.   
+An interactive, cloud‐backed Streamlit visualization dashboard for the Pakistan Super League (2016–2024).  
+*(Data ingestion & ETL pipeline is maintained in a separate repository; see [**ETL Pipeline**](https://github.com/alysahab/PSL-Web-Scraping-ETL).)*
 
 
-## 📈 Future Enhancements
+## 🏏 Project Overview
 
-- Implement a machine learning model for series-winning predictions and player recommendations based on their past performance.
+This repository hosts the **visualization layer** of a comprehensive PSL analytics platform:
 
-## 🧰 Tools and Technologies
+- **Streamlit dashboard** presenting batting and bowling KPIs, leaderboards, and player-specific analytics.  
+- **Dynamic data access** via SQL + Python backed by AWS MySQL RDS for real-time querying.  
+- **Cloud-based storage** ensures scalable, secure data hosting and supports scheduled ETL updates.  
 
-- Python (Pandas, BeautifulSoup, Selenium, Plotly)
-- MySQL (local AWS integration)
-- Streamlit (for interactive dashboard)
+---
 
-## 📚 References
+## ✨ Features
 
-- [Dashboard](https://psl-players-stats.streamlit.app/)
-- [Data](https://www.kaggle.com/datasets/alysahab/complete-psl-data-2016-2024)
-- [Data collection and Data cleaning repository](https://github.com/alysahab/Web-Scraping-PSL-Data)
+- **Streamlit Interface:**  
+  - Sidebar filters for Season, Batsman, Bowler, and module views (**Overall** vs. **Player**).  
+  - Dual tabs for **Charts** & **Details** (raw data tables).  
+
+- **Overall Modules:**  
+  - Top 10 Runs, Batting Average, Strike Rate, Boundaries.  
+  - Top 10 Wickets, Bowling Average, Economy Rate, Strike Rate.  
+
+- **Player Modules:**  
+  - **Batting**: KPI metrics (Matches, Runs, Avg, SR, Fours, Sixes, 50s, 100s) and charts (Runs by season, vs. opponent, dismissal & wicket‐type breakdowns).  
+  - **Bowling**: KPI metrics (Innings, Balls, Runs conceded, Wickets, Bowling Avg, Economy Rate, Strike Rate, Dot Ball %, Maidens, Best Bowling Innings) and charts (Wickets by season, avg & SR vs. teams, wickets/economy trends, distribution percentages).  
+
+- **SQL + Python Integration:**  
+  - All data queries executed via SQLAlchemy in `dbhelper.py` using Python.  
+  - **Streamlit caching** minimizes redundant queries and speeds up interactions.  
+
+- **Cloud-Based Storage:**  
+  - AWS MySQL RDS hosting a normalized, indexed schema (`idx_batsman_season`, `idx_bowling_season`).  
+  - Supports dynamic, scheduled ETL updates for up-to-date analytics.  
+
+---
+
+## 🏗 Technical Architecture
+
+<div align="center">
+  
+| Layer            | Technologies                                   |
+|------------------|------------------------------------------------|
+| **Visualization**| Streamlit, Plotly Express (`app.py` & `visuals.py`)                     |
+| **Backend**      | Python, SQLAlchemy, PyMySQL (`dbhelper.py`)    |
+| **Database**     | AWS MySQL RDS                                  |
+| **ETL Pipeline** | Python, Selenium, BeautifulSoup, Pandas [ETL](https://github.com/alysahab/PSL-Web-Scraping-ETL) |
+| **Deployment**   | Streamlit Cloud / AWS EC2                      |
+  
+</div>
+
+
+VIEW VISUALIZATION [DASHBOARD](https://psl-players-stats.streamlit.app/)
 
